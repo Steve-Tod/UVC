@@ -81,7 +81,7 @@ def create_transforms():
     normalize = transforms.Normalize(mean = (128, 128, 128), std = (128, 128, 128))
     t = []
     t.extend([transforms.ToTensor(),
-    		  normalize])
+              normalize])
     return transforms.Compose(t)
 
 def read_frame(frame_dir, transforms):
@@ -89,13 +89,13 @@ def read_frame(frame_dir, transforms):
     ori_h,ori_w,_ = frame.shape
     if(len(args.scale_size) == 1):
         if(ori_h > ori_w):
-        	tw = args.scale_size[0]
-        	th = (tw * ori_h) / ori_w
-        	th = int((th // 64) * 64)
+            tw = args.scale_size[0]
+            th = (tw * ori_h) / ori_w
+            th = int((th // 64) * 64)
         else:
-        	th = args.scale_size[0]
-        	tw = (th * ori_w) / ori_h
-        	tw = int((tw // 64) * 64)
+            th = args.scale_size[0]
+            tw = (th * ori_w) / ori_h
+            tw = int((tw // 64) * 64)
     else:
         tw = args.scale_size[1]
         th = args.scale_size[0]
@@ -183,13 +183,13 @@ def read_seg(seg_dir):
     h,w = seg.size
     if(len(args.scale_size) == 1):
         if(h > w):
-        	tw = args.scale_size[0]
-        	th = (tw * h) / w
-        	th = int((th // 64) * 64)
+            tw = args.scale_size[0]
+            th = (tw * h) / w
+            th = int((th // 64) * 64)
         else:
-        	th = args.scale_size[0]
-        	tw = (th * w) / h
-        	tw = int((tw // 64) * 64)
+            th = args.scale_size[0]
+            tw = (th * w) / h
+            tw = int((tw // 64) * 64)
     else:
         tw = args.scale_size[1]
         th = args.scale_size[0]

@@ -38,13 +38,13 @@ def read_frame(frame_dir, transforms):
     frame = cv2.imread(frame_dir)
     ori_h,ori_w,_ = frame.shape
     if(ori_h > ori_w):
-    	tw = ori_w
-    	th = (tw * ori_h) / ori_w
-    	th = int((th // 64) * 64)
+        tw = ori_w
+        th = (tw * ori_h) / ori_w
+        th = int((th // 64) * 64)
     else:
-    	th = ori_h
-    	tw = (th * ori_w) / ori_h
-    	tw = int((tw // 64) * 64)
+        th = ori_h
+        tw = (th * ori_w) / ori_h
+        tw = int((tw // 64) * 64)
     #h = (ori_h // 64) * 64
     #w = (ori_w // 64) * 64
     frame = cv2.resize(frame, (tw,th))
@@ -67,13 +67,13 @@ def read_seg(seg_dir, crop_size):
     seg = Image.open(seg_dir)
     h,w = seg.size
     if(h > w):
-    	tw = crop_size
-    	th = (tw * h) / w
-    	th = int((th // 64) * 64)
+        tw = crop_size
+        th = (tw * h) / w
+        th = int((th // 64) * 64)
     else:
-    	th = crop_size
-    	tw = (th * w) / h
-    	tw = int((tw // 64) * 64)
+        th = crop_size
+        tw = (th * w) / h
+        tw = int((tw // 64) * 64)
     seg = np.asarray(seg).reshape((w,h,1))
     seg = np.squeeze(seg)
     seg = scipy.misc.imresize(seg, (tw//8,th//8),"nearest",mode="F")
@@ -85,7 +85,7 @@ def create_transforms(crop_size):
     normalize = transforms.Normalize(mean = (128, 128, 128), std = (128, 128, 128))
     t = []
     t.extend([transforms.ToTensor(),
-    		  normalize])
+              normalize])
     return transforms.Compose(t)
 
 def transform_topk(aff, frame1, k):
