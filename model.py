@@ -4,6 +4,7 @@ import torch.nn as nn
 from libs.net_utils import NLM, NLM_dot, NLM_woSoft
 from torchvision.models import resnet18
 from libs.autoencoder import encoder3, decoder3, encoder_res18, encoder_res50
+import torchvision.models as models
 
 from libs.utils import *
 
@@ -253,3 +254,75 @@ class Model_switchGTfixdot_swCC_Res(nn.Module):
         pred1 = self.decoder(Fcolor1_est)
 
         return pred1, pred2, aff_norm, aff, Fgray1, Fgray2
+    
+class res_encoder(nn.Module):
+    def __init__(self, feat_dim, pretrained=False, model='resnet18'):
+        '''
+        For switchable concenration loss
+        Using Resnet18
+        '''
+        super().__init__()
+        message = 'Use '
+        if pretrained:
+            message += 'pretrained '
+        if model == 'r18':
+            message += 'ResNet18.'
+            backbone = models.resnet18(pretrained=pretrained)
+            self.backbone = nn.Sequential(*list(backbone.children())[:-1])
+            self.proj = nn.Linear(512, feat_dim)
+        else:
+            message += 'ResNet50.'
+            backbone = models.resnet50(pretrained=pretrained)
+            self.backbone = nn.Sequential(*list(backbone.children())[:-1])
+            self.proj = nn.Linear(2048, feat_dim)
+        print(message)
+            
+    def forward(self, x):
+        feat = self.backbone(x)
+        feat = feat.view(feat.size(0), -1)
+        return self.proj(feat)
+
+
+class CRWNet(nn.Module):
+    def __init__(self, feat_dim, pretrained=False, res_model='r18', dropout=0.0, temp=1.0):
+        super().__init__()
+        self.encoder = res_encoder(feat_dim, pretrained, res_model)
+        self.dropout = nn.Dropout(dropout, inplace=False)
+        self.softmax = nn.Softmax(-1)
+        self.temp = temp
+    
+    def forward(self, x):
+        # x: B*T*P*C*h*w
+        B, T, P, C, H, W = x.shape
+        patches = x.view(B*T*P, C, H, W)
+        feats = self.encoder(patches)
+        feats_dim = feats.size(-1)
+        # normalize
+        feats = nn.functional.normalize(feats, p=2, dim=1)
+        # matmul
+        feats = feats.view(B, T, P, feats_dim)
+        # (B*(T-1)) * P * P
+        A = torch.matmul(feats[:, :-1], feats[:, 1:].transpose(-1, -2)) / self.temp
+        #import pdb; pdb.set_trace()
+        # Transition similarities for palindrome graph
+        # B * 2(T-1) * P * P
+        AA = torch.cat([A, A.flip(1).transpose(-1, -2)], dim=1).contiguous()
+        # Dropout and softmax
+        AA = self.softmax(AA)
+        AA = self.dropout(AA)
+        AA = AA / AA.sum(-1, keepdims=True)
+        # Subcycles
+        At_list = []
+        cnt_list = [] # for check
+        for _ in range(T-1):
+            At_list.append(torch.eye(P, device=x.device).view(1, P, P).expand(B, P, P))
+            cnt_list.append(0)
+        for t in range(2 * (T - 1)):
+            # iterating for sub cycles
+            for t_sub in range(T-1):
+                if t >= t_sub and t < 2 * (T - 1) - t_sub:
+                    At_list[t_sub] = torch.bmm(AA[:, t], At_list[t_sub])
+                    cnt_list[t_sub] += 1
+        for t_sub in range(T-1):
+            assert cnt_list[t_sub] == 2 * (T - 1) - 2 * t_sub, '%d != %d' % (cnt_list[t_sub], 2 * (T - 1) - 2 * t_sub)
+        return feats, At_list

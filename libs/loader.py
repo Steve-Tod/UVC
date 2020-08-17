@@ -210,7 +210,10 @@ class VidListv3(torch.utils.data.Dataset):
             video_path = self.list[idx]
             frame_count, fps = get_video_info(video_path)
             rel_rate = int(fps / self.frame_rate)  # relative rate
-            if frame_count <= self.seq_len * rel_rate:
+            if rel_rate < 1:
+                print("Too low fps {}, target fps {}, skip to the next".format(fps, self.frame_rate))
+                idx += 1
+            elif frame_count <= self.seq_len * rel_rate:
                 print("Too short video {}, length {}, skip to the next".format(
                     self.list[idx], int(frame_count)))
                 idx += 1
@@ -237,9 +240,9 @@ class VidListv3(torch.utils.data.Dataset):
             patches = []
             for i in range(patches_tensor.size(-1)):
                 patches.append(self.spatial_jitter(patches_tensor[:, :, :, :, i]))
-            patches_tensor = torch.stack(patches, 2)
-        # C*T*H*W, C*T*P*h*w
-        return frames_tensor.transpose(0, 1).contiguous(), patches_tensor.transpose(0, 1).contiguous()
+            patches_tensor = torch.stack(patches, 1)
+        # T*C*H*W, T*P*C*h*w
+        return frames_tensor, patches_tensor
 
     def __len__(self):
         return len(self.list)
